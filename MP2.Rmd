@@ -1,0 +1,98 @@
+---
+title: "MP2"
+output: html_document
+date: "2024-10-26"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+library(readxl)
+library(forecast)
+library(tseries)
+library(TTR)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+```
+```{r}
+insurance <- read.csv("/Users/kiannazem/Downloads/insurance.csv")
+```
+```{r}
+insurance_ts <- ts(insurance$Quotes, start=c(2002, 01), end=c(2005,04),frequency=12)
+```
+```{r}
+plot(insurance_ts)
+```
+Hypothesis: There does not seem to be any clear trends or seasonality based on the time series plot.
+```{r}
+acf(insurance_ts)
+```
+```{r}
+additive_decomp <- decompose(insurance_ts, type="additive")
+plot(additive_decomp)
+multiplicative_decomp <- decompose(insurance_ts, type="multiplicative")
+plot(multiplicative_decomp)
+```
+the ACF and Decomposition tell us that there is no strong trend or seasonality. There does seem to be some trend in the upward direction in the most recent data points and also a seasonal aspect, although it's not very strong.
+
+```{r}
+naive_forecast <- naive(insurance_ts, h=12)
+plot(naive_forecast, main="Naive Forecast", ylab="Flight Volume", xlab="Time")
+```
+The Naive model assumes that future values will be the same as the most recent value. This is just a simple straight line for a forecast.
+```{r}
+average_forecast <- meanf(insurance_ts, h=12)
+plot(average_forecast, main="Average Forecast")
+```
+The Average model assumes that future values will be equal to the historical average.
+```{r}
+ets_model <- ets(insurance_ts)
+ets_forecast <- forecast(ets_model, h=12)
+plot(ets_forecast)
+```
+ETS handles both trend and seasonality and adapts to changes in the data. There doesn't seem to be much seasonality however, so I don't believe that the difference in accuracy between the ETS andthe naive model for example will be much. It actually looks really quite similar to the naive model.
+```{r}
+hw_forecast <- HoltWinters(insurance_ts)
+plot(hw_forecast)
+```
+The Holt-Winters model is useful when the data has strong seasonal patterns and trends. In this case, there isn't much of a strong trend or seasonality aspect, which is why I believe comparing the RMSEs will show that the Holt-Winters method will not be the best forecasting model for this particular dataset.
+```{r}
+accuracy_naive <- accuracy(naive_forecast)
+accuracy_avg <- accuracy(average_forecast)
+accuracy_ets <- accuracy(ets_forecast)
+accuracy_hw <- accuracy(forecast(hw_forecast))
+```
+```{r}
+str(accuracy_naive)
+print(paste("RMSE (Naive):", accuracy_naive[2]))
+print(paste("RMSE (Average):", accuracy_avg[2]))
+print(paste("RMSE (ETS):", accuracy_ets[2]))
+print(paste("RMSE (Holt-Winters):", accuracy_hw[2]))
+```
+The lower RMSE of the exponential smoothing model tells me that it’s a better, more accurate model, than the other models for this particular dataset. The Naive model also has quite a low RMSE which tells me that this perhaps isn't that complicated of a dataset. I believe it goes back to the point I got from the ACF and decompostion which didn't really show much trend or seasonality, although there was some of that. ETS adjusts to the changes in patterns though, making it more reliable for future forecasting when there’s both seasonality and trends even though it's not much.
+```{r}
+forecast_12_months <- forecast(ets_model, h=12) 
+plot(forecast_12_months, main="12-Month Forecast")
+```
+```{r}
+forecast(ets_forecast, h=12)
+```
+I feel confident in the Exponential Smoothing forecast because it effectively captures both the trend and seasonality in the insurance data, although there isn't much, which puts it over naive. The model adapts to recent changes in the data, giving more weight to recent patterns, which is crucial in an industry that can experience fluctuations. It also performed best in terms of accuracy, with the lowest RMSE, indicating it provides the most reliable predictions. Additionally, the forecast includes confidence intervals, giving me a range of likely outcomes, which further strengthens my confidence in its predictions. I think, however, if this were a business scenario with tons of forecasting, it might be smarter to just go with naive since it's almost just as good and way easier.
